@@ -28,6 +28,26 @@ app.use('/api/videos', require('./routes/videoRoutes'));
 app.use('/api/gallery', require('./routes/galleryRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 
+// Serve static files from React app in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../frontend/dist');
+  if (fs.existsSync(frontendPath)) {
+    app.use(express.static(frontendPath));
+    
+    // Handle React routing, return all requests to React app
+    app.get('*', (req, res) => {
+      // Don't serve React app for API routes
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return res.status(404).json({ message: 'Not found' });
+      }
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+    console.log('✅ Serving React app from frontend/dist');
+  } else {
+    console.log('⚠️  Frontend build not found. Run: cd frontend && npm run build');
+  }
+}
+
 // MongoDB Connection
 const mongoOptions = {
   serverSelectionTimeoutMS: 10000, // Timeout after 10s
@@ -49,6 +69,7 @@ mongoose.connect(process.env.MONGODB_URI || defaultMongoURI, mongoOptions)
   console.log('💡 Make sure MongoDB is running or check your MONGODB_URI in .env file');
 });
 
+// Use PORT from environment (Render sets this automatically) or default to 5001
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
